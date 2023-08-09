@@ -1,0 +1,69 @@
+stages:
+  - build
+  - style
+  - test
+  - deploy
+
+build_code:
+  stage: build
+  needs: []
+  tags:
+    - linux
+  script:
+    - cd src/cat
+    - make s21_cat
+    - cd ../grep
+    - make s21_grep
+  artifacts:
+    paths:
+      - src/cat/s21_cat
+      - src/grep/s21_grep
+    expire_in: 30 days
+  after_script:
+    - sh src/bot.sh
+
+codestyle:
+  stage: style
+  needs: []
+  tags:
+    - linux
+  script:
+    - cd src/cat
+    - make style
+    - cd ../grep
+    - make style
+  allow_failure: false
+  after_script:
+    - sh src/bot.sh
+
+test_code:
+  stage: test
+  needs:
+    - job: build_code
+    - job: codestyle
+  tags:
+    - linux
+  script:
+    - cd src/cat
+    - make test
+    - cd ../grep
+    - make test
+  when: on_success
+  allow_failure: false
+  after_script:
+    - sh src/bot.sh
+  
+deployment:
+  stage: deploy
+  needs:
+    - job: build_code
+      artifacts: true
+    - job: test_code
+  tags:
+    - linux
+  script:
+    - bash src/copy.sh
+  when: manual
+  allow_failure: false
+  after_script:
+    - sh src/bot.sh
